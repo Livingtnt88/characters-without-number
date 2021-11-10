@@ -1,4 +1,5 @@
 import random
+from __future__ import annotations
 
 class character:
     def __init__(self, attributes, skills, background, Class):
@@ -21,4 +22,37 @@ class background:
         return random.choice(self.learning)
 
 class Class:
-    pass
+    def __init__(self, name: str, description: str, ability, modifiers):
+        self.name = name
+        self.description = description
+
+        self.ability = ability
+        self.modifiers = modifiers
+    
+    def __add__(self, other: Class) -> Class:
+        if (type(self) == type(other)) and not (self == other):
+            name = f'{self.name}/{other.name}'
+            description = f'{self.description}/n{other.description}'
+
+            ability = self.ability + other.ability
+            modifiers = self.modifiers + other.modifiers
+
+            return Class(name, description, ability, modifiers)        
+        else:
+            raise TypeError
+
+    def __eq__(self, other: Class) -> bool:
+        if type(self) == type(other):
+            if self.name == other.name and self.modifiers == other.modifiers:
+                return True
+            else:
+                return False
+        else:
+            return False
+
+class foci:
+    def __init__(self, name, description, modifiers):
+        self.name = name
+        self.description = description
+
+        self.modifiers = modifiers
