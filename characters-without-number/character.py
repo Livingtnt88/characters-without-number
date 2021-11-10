@@ -1,10 +1,62 @@
-import random
 from __future__ import annotations
+import random
+
+def roll(number: int, dice: int, bonus: int = 0) -> int:
+    sum = 0
+    for x in range(number):
+        sum += random.randint(1, dice)
+    return sum + bonus
+
+def roll_str(str: str) -> int:
+    number, dice = str.split('d')
+    try: 
+        return roll(int(number), int(dice))
+    except ValueError as e:
+        if not dice.split('+')[-1] == '':
+            dice, bonus = dice.split('+')
+            return roll(int(number), int(dice), int(bonus))
+        elif not dice.split('-')[-1] == '':
+            dice, bonus = dice.split('-')
+            return roll(int(number), int(dice), -int(bonus))
+        else:
+            raise e
 
 class character:
-    def __init__(self, attributes, skills, background, Class, foci, items):
-        pass
+    def __init__(self, name, attributes: dict, skill_list: dict, background: background, Class: Class, foci, items, choices: dict):
+        self.name = name
 
+        self.attributes = {}
+        for attribute in attributes.keys:
+            self.attributes[attribute] = [0,0]
+            self.update_attribute(attribute, attributes[attribute])
+
+        self.skills = {skill:[-1, type] for (skill, type) in skill_list.items}
+        self.background = background
+        self.Class = Class
+        self.foci = foci
+        self.items = items
+        self.choices = choices
+    
+    def update_attribute(self, attribute: str, score: int):
+        self.attributes[attribute][0] = score
+        match self.attributes[attribute][0]:
+                case 3:
+                    self.attributes[attribute][1] = -2
+                case x if x > 3 and x <= 7:
+                    self.attributes[attribute][1] = -1
+                case x if x > 7 and x <= 13:
+                    self.attributes[attribute][1] = 0
+                case x if x > 13 and x <= 17:
+                    self.attributes[attribute][1] = 1
+                case 18:
+                    self.attributes[attribute][1] = 2
+
+    def roll_attributes(self):
+        for attribute in self.attributes.keys:
+            self.update_attribute(self, attribute, roll(3,6))
+            
+
+        
 class background:
     def __init__(self, name: str, description: str, free_skill: dict, quick_skills: dict, growth: list, learning: list):
         self.name = name
@@ -43,7 +95,7 @@ class Class:
 
     def __eq__(self, other: Class) -> bool:
         if type(self) == type(other):
-            if self.name == other.name and self.modifiers == other.modifiers:
+            if self.name == other.name:
                 return True
             else:
                 return False
