@@ -106,7 +106,7 @@ class character:
                 self.modifiers['choice'] += [[num_choices, replacement, list_modifiers, source]]
             # ability
             case ['ability', ability]:
-                self.modifiers['choice'] += [[ability, source]]
+                self.modifiers['ability'] += [[ability, source]]
             # resource
             case ['resource', name, formula, usage]:
                 self.modifiers['resource'] += [[name, formula, usage, source]]   
