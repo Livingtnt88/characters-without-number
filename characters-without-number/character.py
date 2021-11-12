@@ -1,3 +1,20 @@
+# Characters without number is a simple character builder for stars without number 
+# and worlds without number
+#    Copyright (C) 2021  LivingTnT88
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 from __future__ import annotations
 import random
 
@@ -22,7 +39,9 @@ def roll_str(str: str) -> int:
             raise e
 
 class character:
-    def __init__(self, name, attributes: dict, skill_list: dict, background: background, Class: Class, foci, items, choices: dict):
+    def __init__(self, name, attributes: dict, skill_list: dict, choices: dict, background: background, Class: Class, foci: list[foci], items):
+        self.modifiers = {'skill': [], 'attribute':[]}
+        self.abilities = []
         self.name = name
 
         self.attributes = {}
@@ -30,12 +49,30 @@ class character:
             self.attributes[attribute] = [0,0]
             self.update_attribute(attribute, attributes[attribute])
 
-        self.skills = {skill:[-1, type] for (skill, type) in skill_list.items}
-        self.background = background
-        self.Class = Class
-        self.foci = foci
-        self.items = items
+        self.skills = {skill:[-1,type] for (skill, type) in skill_list.items}
         self.choices = choices
+        
+        self.background = background
+        if self.choices['background'] == 'quick_skills':
+            self.add_modifier(background.quick_skills ,'background')
+        else:
+            self.add_modifier(background.free_skill ,'background')
+            for pick, table in self.choices['background']:
+                if table == 'growth':
+                    self.add_modifier(background.growth[pick], 'background')
+                elif table == 'learning':
+                    self.add_modifier(background.learning[pick], 'background')
+        
+        self.Class = Class
+        self.abilities += Class.ability
+        self.add_modifier(Class.modifiers, Class.name)
+
+        self.foci = foci
+        for focus in foci:
+            self.add_modifier(focus.modifiers, focus.name)
+
+        self.items = items
+        
     
     def update_attribute(self, attribute: str, score: int):
         self.attributes[attribute][0] = score
@@ -55,10 +92,47 @@ class character:
         for attribute in self.attributes.keys:
             self.update_attribute(self, attribute, roll(3,6))
             
+    def add_modifier(self, modifier: list, source: str):
+        match modifier:
+            # multiple modifiers
+            case [*lists] if type(lists[0]) == list:
+                for list in lists:
+                    self.add_modifier(list, source)
+            # prerequisite
+            case ['prerequisite', prerequisite, list_modifiers]:
+                self.modifiers['prerequisite'] += [[prerequisite, list_modifiers, source]]
+            # choice
+            case ['choice', num_choices, replacement, list_modifiers]:
+                self.modifiers['choice'] += [[num_choices, replacement, list_modifiers, source]]
+            # ability
+            case ['ability', ability]:
+                self.modifiers['choice'] += [[ability, source]]
+            # resource
+            case ['resource', name, formula, usage]:
+                self.modifiers['resource'] += [[name, formula, usage, source]]   
+            # skill gain
+            case ['skill', 'gain', skill]:
+                self.modifiers['skill'] += [['gain', skill, source]]
+            # new skill
+            case ['skill', 'new', skill, type]:
+                self.modifiers['skill'] += [['new', skill, type, source]]
+            # skill dice
+            case ['skill', 'dice', dice]:
+                self.modifiers['skill'] += [['dice', dice, source]]
+            # attribute score bonus
+            case ['attribute', 'score', attribute, bonus]:
+                self.modifiers['attribute'] += [['score', attribute, bonus, source]]
+            # attribute mod bonus
+            case ['attribute', 'mod', attribute, bonus]:
+                 self.modifiers['attribute'] += [['mod', attribute, bonus, source]]    
+            case _:
+                if type(modifier) == list :
+                    raise ValueError(f'Malformed/unsupported modifier {modifier} from {source}')
+                else:
+                    raise TypeError(f'Modifiers must be lists {modifier} from {source} is a {type(modifier)}')
 
-        
 class background:
-    def __init__(self, name: str, description: str, free_skill: dict, quick_skills: dict, growth: list, learning: list):
+    def __init__(self, name: str, description: str, free_skill: str, quick_skills: list, growth: list, learning: list):
         self.name = name
         self.decription = description
 
@@ -102,10 +176,14 @@ class Class:
         else:
             return False
 
-class foci:
-    def __init__(self, name: str, description: str, modifiers, tags: list = None):
+class ability:
+    pass
+
+class foci(ability):
+    def __init__(self, name: str, description: str, level: int, modifiers, tags: list = None):
         self.name = name
         self.description = description
+        self.level = level
 
         self.modifiers = modifiers
         self.tags = tags
