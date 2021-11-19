@@ -1,5 +1,4 @@
-# Characters without number is a simple character builder for stars without number 
-# and worlds without number
+# Characters without number is a simple character builder for stars without number and worlds without number
 #    Copyright (C) 2021  LivingTnT88
 #
 #    This program is free software: you can redistribute it and/or modify
@@ -40,7 +39,7 @@ def roll_str(str: str) -> int:
 
 class character:
     def __init__(self, name, attributes: dict, skill_list: dict, choices: dict, background: background, Class: Class, foci: list[foci], items):
-        self.modifiers = {'skill': [], 'attribute':[]}
+        self.modifiers = {'prerequisite': [], 'choice': [], 'ability': [], 'resource': [], 'resource used': [], 'new skill': [], 'skill gain': [], 'skill dice': [], 'attribute score bonus': [], 'attribute mod bonus': [], 'set stat': [], 'stat modification':[]}
         self.abilities = []
         self.name = name
 
@@ -56,20 +55,20 @@ class character:
         if self.choices['background'] == 'quick_skills':
             self.add_modifier(background.quick_skills ,'background')
         else:
-            self.add_modifier(background.free_skill ,'background')
+            self.add_modifier(background.free_skill)
             for pick, table in self.choices['background']:
                 if table == 'growth':
-                    self.add_modifier(background.growth[pick], 'background')
+                    self.add_modifier(background.growth[pick])
                 elif table == 'learning':
-                    self.add_modifier(background.learning[pick], 'background')
+                    self.add_modifier(background.learning[pick])
         
         self.Class = Class
         self.abilities += Class.ability
-        self.add_modifier(Class.modifiers, Class.name)
+        self.add_modifier(Class.modifiers)
 
         self.foci = foci
         for focus in foci:
-            self.add_modifier(focus.modifiers, focus.name)
+            self.add_modifier(focus.passive_modifiers)
 
         self.items = items
         
@@ -92,44 +91,18 @@ class character:
         for attribute in self.attributes.keys:
             self.update_attribute(self, attribute, roll(3,6))
             
-    def add_modifier(self, modifier: list, source: str):
-        match modifier:
-            # multiple modifiers
-            case [*lists] if type(lists[0]) == list:
-                for list in lists:
-                    self.add_modifier(list, source)
-            # prerequisite
-            case ['prerequisite', prerequisite, list_modifiers]:
-                self.modifiers['prerequisite'] += [[prerequisite, list_modifiers, source]]
-            # choice
-            case ['choice', num_choices, replacement, list_modifiers]:
-                self.modifiers['choice'] += [[num_choices, replacement, list_modifiers, source]]
-            # ability
-            case ['ability', ability]:
-                self.modifiers['ability'] += [[ability, source]]
-            # resource
-            case ['resource', name, formula, usage]:
-                self.modifiers['resource'] += [[name, formula, usage, source]]   
-            # skill gain
-            case ['skill', 'gain', skill]:
-                self.modifiers['skill'] += [['gain', skill, source]]
-            # new skill
-            case ['skill', 'new', skill, type]:
-                self.modifiers['skill'] += [['new', skill, type, source]]
-            # skill dice
-            case ['skill', 'dice', dice]:
-                self.modifiers['skill'] += [['dice', dice, source]]
-            # attribute score bonus
-            case ['attribute', 'score', attribute, bonus]:
-                self.modifiers['attribute'] += [['score', attribute, bonus, source]]
-            # attribute mod bonus
-            case ['attribute', 'mod', attribute, bonus]:
-                 self.modifiers['attribute'] += [['mod', attribute, bonus, source]]    
-            case _:
-                if type(modifier) == list :
-                    raise ValueError(f'Malformed/unsupported modifier {modifier} from {source}')
-                else:
-                    raise TypeError(f'Modifiers must be lists {modifier} from {source} is a {type(modifier)}')
+    def add_modifier(self, modifiers: dict):
+        for type, modifier in modifiers.values:
+            if type == 'modifier':
+                self.add_modifier(modifier)
+            elif isinstance(modifier, list):
+                try:
+                    self.modifiers[type].extend(modifier)
+                except KeyError:
+                    raise ValueError(f'unsupported modifier from {modifier[-1]}, {type}: {modifier}')
+            else:
+                raise TypeError(f'Modifiers must be lists {modifier} is a {type(modifier)}')
+
 
 class background:
     def __init__(self, name: str, description: str, free_skill: str, quick_skills: list, growth: list, learning: list):
@@ -151,42 +124,80 @@ class Class:
     def __init__(self, name: str, description: str, ability, modifiers):
         self.name = name
         self.description = description
-
+        
         self.ability = ability
         self.modifiers = modifiers
     
     def __add__(self, other: Class) -> Class:
-        if (type(self) == type(other)) and not (self == other):
+        if isinstance(other, Class) and not (self == other):
             name = f'{self.name}/{other.name}'
             description = f'{self.description}/n{other.description}'
-
+            
             ability = self.ability + other.ability
             modifiers = self.modifiers + other.modifiers
-
-            return Class(name, description, ability, modifiers)        
+            
+            return Class(name, description, ability, modifiers)
+        elif self == other:
+            raise ValueError('Class can only be added with another unique Class')
         else:
-            raise TypeError
-
+            raise TypeError(f'Class can only be added with another unique Class not {type(other)}')
+    
     def __eq__(self, other: Class) -> bool:
-        if type(self) == type(other):
+        if isinstance(other, Class):
             if self.name == other.name:
                 return True
             else:
                 return False
         else:
             return False
+    
+    def __repr__(self) -> str:
+        return f'Class({self.name}, {self.description}, {self.ability}, {self.modifiers})'
+
+class partial_class(Class):
+    def __init__(self, name: str, description: str, ability, modifiers):
+        super().__init__(name, description, ability, modifiers)
+    
+    def __repr__(self) -> str:
+        return f'partial_class({self.name}, {self.description}, {self.ability}, {self.modifiers})'
 
 class ability:
-    pass
-
-class foci(ability):
-    def __init__(self, name: str, description: str, level: int, modifiers, tags: list = None):
+    def __init__(self, name: str,
+                description: str, cost: list = None, 
+                passive_modifiers: list[list] = None, 
+                active_modifiers: dict[list] = None, 
+                actions: list = None, 
+                duration: dict[list] = None, 
+                resources: dict[list] = None, 
+                group: list = None
+                ) -> None:
+        
         self.name = name
         self.description = description
-        self.level = level
 
-        self.modifiers = modifiers
-        self.tags = tags
+        self.cost = cost
+        self.passive_modifiers = passive_modifiers
+        self.active_modifiers = active_modifiers
+        self.actions = actions
+        self.duration = duration
+        self.resources = resources
+        self.group = group
+
+    def use(self, action: str) -> tuple:
+        return (self.resources[action], self.duration[action], self.active_modifiers[action])
+    
+class foci(ability):
+   def __init__(self, name: str, 
+                description: str, 
+                passive_modifiers: list[list] = None, 
+                active_modifiers: dict[list] = None, 
+                actions: list = None, 
+                duration: dict[list] = None, 
+                resources: dict[list] = None, 
+                group: list = None
+                ) -> None:
+       
+       super().__init__(name, description, ['focus pick', 1], passive_modifiers, active_modifiers, actions, duration, resources, ['foci'] + group)
 
 class item:
     def __init__(self, name: str, description: str, cost: int, enc: int, tl: int = None, packable :bool = False) -> None:

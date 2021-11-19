@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
-# Characters without number is a simple character builder for stars without number 
-# and worlds without number
+# Characters without number is a simple character builder for stars without number and worlds without number
 #    Copyright (C) 2021  LivingTnT88
 #
 #    This program is free software: you can redistribute it and/or modify
