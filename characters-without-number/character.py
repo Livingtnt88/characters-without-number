@@ -104,7 +104,7 @@ class character:
             else:
                 raise TypeError(f'Modifiers must be lists {modifier} is a {type(modifier)}')
 
-@dataclass(frozen = True)
+@dataclass(frozen = True, slots = True)
 class background:
     name: str
     description: str
@@ -119,7 +119,7 @@ class background:
     def roll_learning(self):
         return random.choice(self.learning)
 
-@dataclass(frozen = True)
+@dataclass(frozen = True, slots = True)
 class Ability:
     name: str
     description: str
@@ -134,7 +134,7 @@ class Ability:
     def use(self, action: str) -> tuple:
         return (self.resources[action], self.duration[action], self.active_modifiers[action])
 
-@dataclass(frozen = True)
+@dataclass(frozen = True, slots = True)
 class Class:
     name: str
     description: str
@@ -167,26 +167,18 @@ class Class:
     def __repr__(self) -> str:
         return f'Class({self.name}, {self.description}, {self.ability}, {self.modifiers})'
 
-@dataclass(frozen = True)
+@dataclass(frozen = True, slots = True)
 class partial_class(Class):
     
     def __repr__(self) -> str:
         return f'partial_class({self.name}, {self.description}, {self.ability}, {self.modifiers})'
-    
-class foci(Ability):
-   def __init__(self, name: str, 
-                description: str, 
-                passive_modifiers: dict[list] = None, 
-                active_modifiers: dict[list] = None, 
-                actions: list = None, 
-                duration: dict[list] = None, 
-                resources: dict[list] = None, 
-                group: list = None
-                ) -> None:
-       
-       super().__init__(name, description, ['focus pick', 1], passive_modifiers, active_modifiers, actions, duration, resources, ['foci'] + group)
 
-@dataclass(frozen = True)
+@dataclass(frozen = True, slots = True)
+class foci(Ability):
+    cost: list = ['focus pick', 1]
+    group: list = ['foci']   
+
+@dataclass(frozen = True, slots = True)
 class item:
     name: str
     description: str
@@ -195,17 +187,17 @@ class item:
     tl: int = None
     packable: bool = False
 
-@dataclass(frozen = True)
+@dataclass(frozen = True, slots = True)
 class armor(item):
     ac: int = 10
     ac_bonus: int = 0
 
-@dataclass(frozen = True)
+@dataclass(frozen = True, slots = True)
 class weapon(item):
     damage: str = None
     attribute: str = None
 
-@dataclass(frozen = True)
+@dataclass(frozen = True, slots = True)
 class ranged(weapon):
     range: str = None
     magazine: int = None
@@ -213,12 +205,12 @@ class ranged(weapon):
     burst: bool = False
     loading: bool = False
 
-@dataclass(frozen = True)
+@dataclass(frozen = True, slots = True)
 class melee(weapon):
     shock_ac: int = None
     shock_dmg: int = None
 
-@dataclass(frozen = True)
+@dataclass(frozen = True, slots = True)
 class heavy(weapon):
     range: str = None
     magazine: int = None
