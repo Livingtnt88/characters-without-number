@@ -15,6 +15,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from __future__ import annotations
+from dataclasses import dataclass
 import random
 
 def roll(number: int, dice: int, bonus: int = 0) -> int:
@@ -103,16 +104,14 @@ class character:
             else:
                 raise TypeError(f'Modifiers must be lists {modifier} is a {type(modifier)}')
 
-
+@dataclass(frozen = True)
 class background:
-    def __init__(self, name: str, description: str, free_skill: str, quick_skills: list, growth: list, learning: list):
-        self.name = name
-        self.decription = description
-
-        self.free_skill = free_skill
-        self.quick_skills = quick_skills
-        self.growth = growth
-        self.learning = learning
+    name: str
+    description: str
+    free_skill: str
+    quick_skills: list
+    growth: list
+    learning: list
 
     def roll_growth(self):
         return random.choice(self.growth)
@@ -120,13 +119,27 @@ class background:
     def roll_learning(self):
         return random.choice(self.learning)
 
+@dataclass(frozen = True)
+class Ability:
+    name: str
+    description: str
+    cost: list = None, 
+    passive_modifiers: dict[list] = None, 
+    active_modifiers: dict = None, 
+    actions: list = None, 
+    duration: dict = None, 
+    resources: dict = None, 
+    group: list = None
+
+    def use(self, action: str) -> tuple:
+        return (self.resources[action], self.duration[action], self.active_modifiers[action])
+
+@dataclass(frozen = True)
 class Class:
-    def __init__(self, name: str, description: str, ability, modifiers):
-        self.name = name
-        self.description = description
-        
-        self.ability = ability
-        self.modifiers = modifiers
+    name: str
+    description: str
+    ability: Ability
+    modifiers: dict
     
     def __add__(self, other: Class) -> Class:
         if isinstance(other, Class) and not (self == other):
@@ -154,42 +167,16 @@ class Class:
     def __repr__(self) -> str:
         return f'Class({self.name}, {self.description}, {self.ability}, {self.modifiers})'
 
+@dataclass(frozen = True)
 class partial_class(Class):
-    def __init__(self, name: str, description: str, ability, modifiers):
-        super().__init__(name, description, ability, modifiers)
     
     def __repr__(self) -> str:
         return f'partial_class({self.name}, {self.description}, {self.ability}, {self.modifiers})'
-
-class ability:
-    def __init__(self, name: str,
-                description: str, cost: list = None, 
-                passive_modifiers: list[list] = None, 
-                active_modifiers: dict[list] = None, 
-                actions: list = None, 
-                duration: dict[list] = None, 
-                resources: dict[list] = None, 
-                group: list = None
-                ) -> None:
-        
-        self.name = name
-        self.description = description
-
-        self.cost = cost
-        self.passive_modifiers = passive_modifiers
-        self.active_modifiers = active_modifiers
-        self.actions = actions
-        self.duration = duration
-        self.resources = resources
-        self.group = group
-
-    def use(self, action: str) -> tuple:
-        return (self.resources[action], self.duration[action], self.active_modifiers[action])
     
-class foci(ability):
+class foci(Ability):
    def __init__(self, name: str, 
                 description: str, 
-                passive_modifiers: list[list] = None, 
+                passive_modifiers: dict[list] = None, 
                 active_modifiers: dict[list] = None, 
                 actions: list = None, 
                 duration: dict[list] = None, 
@@ -199,50 +186,41 @@ class foci(ability):
        
        super().__init__(name, description, ['focus pick', 1], passive_modifiers, active_modifiers, actions, duration, resources, ['foci'] + group)
 
+@dataclass(frozen = True)
 class item:
-    def __init__(self, name: str, description: str, cost: int, enc: int, tl: int = None, packable :bool = False) -> None:
-        self.name = name
-        self. description = description
+    name: str
+    description: str
+    cost: int
+    enc: int
+    tl: int = None
+    packable: bool = False
 
-        self.cost = cost
-        self.enc = enc
-        self.packable = packable
-        self.tl = tl
-
+@dataclass(frozen = True)
 class armor(item):
-    def __init__(self, name: str, description: str, ac: int, cost: int, enc: int, tl: int = None, ac_bonus: int = 0) -> None:
-        self.ac = ac
-        self.ac_bonus = ac_bonus
+    ac: int = 10
+    ac_bonus: int = 0
 
-        super().__init__(name, description, cost, enc, tl)
-
+@dataclass(frozen = True)
 class weapon(item):
-    def __init__(self, name: str, description: str, damage: str, attribute: str, cost: int, enc: int, tl: int = None) -> None:
-        self.damage = damage
-        self.attribute = attribute
-        super().__init__(name, description, cost, enc, tl)
+    damage: str = None
+    attribute: str = None
 
+@dataclass(frozen = True)
 class ranged(weapon):
-    def __init__(self, name: str, description: str, damage: str, attribute: str, range: str, magazine: int, ammo: item, cost: int, enc: int, tl: int = None, burst: bool = False, loading: bool = False) -> None:
-        self.range = range
-        self.magazine = magazine
-        self.ammo = ammo
-        self.burst = burst
-        self.loading = loading
+    range: str = None
+    magazine: int = None
+    ammo: item = None
+    burst: bool = False
+    loading: bool = False
 
-        super().__init__(name, description, damage, attribute, cost, enc, tl)
-
+@dataclass(frozen = True)
 class melee(weapon):
-    def __init__(self, name: str, description: str, damage: str, attribute: str, shock_ac: int, shock_dmg: int, cost: int, enc: int, tl: int = None) -> None:
-        self.shock_ac = shock_ac
-        self.shock_dmg = shock_dmg
-        super().__init__(name, description, damage, attribute, cost, enc, tl)
+    shock_ac: int = None
+    shock_dmg: int = None
 
+@dataclass(frozen = True)
 class heavy(weapon):
-    def __init__(self, name: str, description: str, damage: str, attribute: str, range: str, magazine: int, ammo: item, cost: int, enc: int, tl: int = None, supression = False) -> None:
-        self.range = range
-        self.magazine = magazine
-        self.ammo = ammo
-        self.supression = supression
-
-        super().__init__(name, description, damage, attribute, cost, enc, tl=tl)
+    range: str = None
+    magazine: int = None
+    ammo: item = None
+    supression: bool = False
